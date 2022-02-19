@@ -39,7 +39,7 @@ device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
 # Keep the block size 128
 # Why is the pretraining corpus always required (even if we're not pretraining?)
 # It's because we're using it as a hack to always have the same vocabulary
-# (that is, the same mapping from character to integer, and we build the 
+# (that is, the same mapping from character to integer, and we build the
 # vocab from the pretraining corpus.)
 block_size = 128
 text = open(args.pretrain_corpus_path).read()
@@ -55,7 +55,8 @@ Don't change above here; write your code below
 """
 
 if args.variant == 'vanilla':
-    pass # TODO [part c]: Make some model here
+    my_model = model.GPT(mconf)
+
 elif args.variant == 'synthesizer':
     pass # TODO [part g]: Make some other model here
 
@@ -95,6 +96,17 @@ elif args.function == 'finetune':
     #         into the model
     #     2. Finetune the model on this corpus
     #     3. Save the resulting model in args.writing_params_path
+    if args.reading_params_path is not None:
+        my_model.load_state_dict(torch.load(args.reading_params_path))
+    tconf = trainer.TrainerConfig(max_epochs=75, batch_size=256, learning_rate=6e-4,
+                      lr_decay=True, warmup_tokens=512*20, final_tokens=200*len(pretrain_dataset)*block_size,
+                      num_workers=4)
+    text = open(args.finetune_corpus_path, 'r').read() # don't worry we won't run out of file handles
+    train_dataset = dataset.NameDataset(pretrain_dataset, text) # one line of poem is roughly 50 characters
+    my_trainer = trainer.Trainer(my_model, train_dataset, None, tconf)
+    my_trainer.train()
+    torch.save(my_model.state_dict(), args.writing_params_path)
+
     # - Make sure to use the following hyperparameters:
     #     Hyperparameters for finetuning WITHOUT a pretrained model:
     #         max_epochs=75
@@ -112,7 +124,6 @@ elif args.function == 'finetune':
     #         warmup_tokens=512*20
     #         final_tokens=200*len(pretrain_dataset)*block_size
     #         num_workers=4
-    raise NotImplementedError
 elif args.function == 'evaluate':
     assert args.outputs_path is not None
     assert args.reading_params_path is not None
@@ -137,4 +148,3 @@ elif args.function == 'evaluate':
     else:
         print('Predictions written to {}; no targets provided'
                 .format(args.outputs_path))
-
