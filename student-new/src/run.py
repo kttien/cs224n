@@ -8,7 +8,7 @@ import argparse
 random.seed(0)
 
 import dataset
-import model
+import model as model_module
 import trainer
 import utils
 
@@ -47,7 +47,7 @@ pretrain_dataset = dataset.CharCorruptionDataset(text, block_size)
 
 # We don't suggest you change these hyperparameters, as they're known to work.
 # use them for both the vanilla and the synthesizer models
-mconf = model.GPTConfig(pretrain_dataset.vocab_size, pretrain_dataset.block_size,
+mconf = model_module.GPTConfig(pretrain_dataset.vocab_size, pretrain_dataset.block_size,
     n_layer=4, n_head=8, n_embd=256)
 
 """
@@ -55,7 +55,7 @@ Don't change above here; write your code below
 """
 
 if args.variant == 'vanilla':
-    my_model = model.GPT(mconf)
+    model = model_module.GPT(mconf)
 
 elif args.variant == 'synthesizer':
     pass # TODO [part g]: Make some other model here
@@ -96,16 +96,16 @@ elif args.function == 'finetune':
     #         into the model
     #     2. Finetune the model on this corpus
     #     3. Save the resulting model in args.writing_params_path
-    # if args.reading_params_path is not None:
-    #     my_model.load_state_dict(torch.load(args.reading_params_path))
+    if args.reading_params_path is not None:
+        model.load_state_dict(torch.load(args.reading_params_path))
     tconf = trainer.TrainerConfig(max_epochs=75, batch_size=256, learning_rate=6e-4,
                       lr_decay=True, warmup_tokens=512*20, final_tokens=200*len(pretrain_dataset)*block_size,
                       num_workers=4)
     text = open(args.finetune_corpus_path, 'r').read() # don't worry we won't run out of file handles
     train_dataset = dataset.NameDataset(pretrain_dataset, text) # one line of poem is roughly 50 characters
-    my_trainer = trainer.Trainer(my_model, train_dataset, None, tconf)
+    my_trainer = trainer.Trainer(model, train_dataset, None, tconf)
     my_trainer.train()
-    torch.save(my_model.state_dict(), args.writing_params_path)
+    torch.save(model.state_dict(), args.writing_params_path)
 
     # - Make sure to use the following hyperparameters:
     #     Hyperparameters for finetuning WITHOUT a pretrained model:
