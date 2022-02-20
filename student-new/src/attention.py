@@ -61,9 +61,7 @@ class SynthesizerAttention(nn.Module):
         super().__init__()
         assert config.n_embd % config.n_head == 0
         # NEW learnable weights
-        # w1 is
         self.w1 = nn.Linear(config.n_embd, config.n_embd)
-        # w2 is Bi
         self.w2 = nn.Parameter(torch.zeros(config.n_embd // config.n_head,
             config.block_size-1))
         self.b2 = nn.Parameter(torch.zeros(config.block_size-1))
@@ -95,8 +93,8 @@ class SynthesizerAttention(nn.Module):
         B, T, C = x.size()
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        v = self.key(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-        b = self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        b = self.w1(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         # v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
         # v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
