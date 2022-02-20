@@ -60,6 +60,7 @@ if args.variant == 'vanilla':
 elif args.variant == 'synthesizer':
     pass # TODO [part g]: Make some other model here
 
+
 # From here on, your code should be identical independent of which
 # variant (vanilla or synthesizer) has been chosen.
 
@@ -89,8 +90,6 @@ if args.function == 'pretrain':
     my_trainer = trainer.Trainer(model, pretrain_dataset, None, tconf)
     my_trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)
-
-    raise NotImplementedError
 elif args.function == 'finetune':
     assert args.writing_params_path is not None
     assert args.finetune_corpus_path is not None
