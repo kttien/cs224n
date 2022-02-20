@@ -58,7 +58,10 @@ if args.variant == 'vanilla':
     model = model_module.GPT(mconf)
 
 elif args.variant == 'synthesizer':
-    pass # TODO [part g]: Make some other model here
+    mconf.use_synth = True
+    model = model_module.GPT(mconf)
+    # pass # TODO [part g]: Make some other model here
+
 
 
 # From here on, your code should be identical independent of which

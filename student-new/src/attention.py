@@ -61,7 +61,9 @@ class SynthesizerAttention(nn.Module):
         super().__init__()
         assert config.n_embd % config.n_head == 0
         # NEW learnable weights
+        # w1 is
         self.w1 = nn.Linear(config.n_embd, config.n_embd)
+        # w2 is Bi
         self.w2 = nn.Parameter(torch.zeros(config.n_embd // config.n_head,
             config.block_size-1))
         self.b2 = nn.Parameter(torch.zeros(config.block_size-1))
@@ -90,4 +92,28 @@ class SynthesizerAttention(nn.Module):
         #   - Consider especially the parameters self.w1, self.w2 and self.b2.
         #       How do these map to the matrices in the handout?
 
-        raise NotImplementedError
+        B, T, C = x.size()
+
+        # calculate query, key, values for all heads in batch and move head forward to be the batch dim
+        v = self.key(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        b = self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        # v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+
+        v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+        b = self.w1(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+        b = F.relu(b)
+
+        # synthesizer
+        att = b @ self.w2[:, :T] + self.b2[:T]  # (B, nh, T, hs) x (hs, T) + (T)-> (B, nh, T, T)
+
+        # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
+        att = F.relu(b @ self.w2[:, :T] + self.b2[:T])
+        att = att.masked_fill(self.mask[:,:,:T,:T] == 0, -1e10) # todo: just use float('-inf') instead?
+        att = F.softmax(att, dim=-1)
+        att = self.attn_drop(att)
+        y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+        y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
+
+        # output projection
+        y = self.resid_drop(self.proj(y))
+        return y
