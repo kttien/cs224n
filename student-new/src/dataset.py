@@ -168,7 +168,80 @@ class CharCorruptionDataset(Dataset):
 
     def __getitem__(self, idx):
         # TODO [part e]: see spec above
-        raise NotImplementedError
+
+
+        '''
+        The __getitem__ function takes an index and returns a data point (x, y) where
+x and y are Long tensors of length self.block_size. x encodes the input
+sequence, and y encodes the output sequence.
+
+0. Use the idx argument of __getitem__ to retrieve the element of self.data
+at the given index. We'll call the resulting data entry a document.
+'''
+        document = self.data[idx]
+        min_length = 4
+        max_length = int(self.block_size*7/8)
+        length = random.randint(min_length, max_length)
+        truncated_document = document[:length]
+
+        min_length = 4
+        max_length = int(self.block_size*7/8)
+        truncated_length = random.randint(min_length, max_length)
+        document = document[:truncated_length]
+
+        masked_length = random.randint(1, int(0.25 * truncated_length))
+        # randint is inclusive
+        prefix_length = random.randint(1, truncated_length - masked_length - 1)
+        suffix_length = truncated_length - masked_length - prefix_length
+        prefix = truncated_document[:prefix_length]
+        masked_content = truncated_document[prefix_length:-suffix_length]
+        suffix = truncated_document[-suffix_length:]
+        masked_string = prefix + self.MASK_CHAR + suffix + self.MASK_CHAR + masked_content
+        pads_length = self.block_size - len(masked_string)
+        masked_string += self.PAD_CHAR * pads_length
+
+        input_string = masked_string[:-1]
+        output_string = masked_string[1:]
+
+        x = torch.tensor([self.stoi[c] for c in input_string], dtype=torch.long)
+        y = torch.tensor([self.stoi[c] for c in output_string], dtype=torch.long)
+        return x, y
+
+'''
+
+2. Now, break the (truncated) document into three substrings:
+
+    [prefix] [masked_content] [suffix]
+
+  In other words, choose three strings prefix, masked_content and suffix
+    such that prefix + masked_content + suffix = [the original document].
+  The length of [masked_content] should be random, and 1/4 the length of the
+    truncated document on average.
+
+- IMPORTANT: You are free to decide how to perform this operation, but
+make sure that the length is picked _randomly_ (has a chance of being more or
+less than 1/4 the length of the truncated document) for full credit.
+
+3. Rearrange these substrings into the following form:
+
+    [prefix] MASK_CHAR [suffix] MASK_CHAR [masked_content] [pads]
+
+  This resulting string, denoted masked_string, serves as the output example.
+  Here MASK_CHAR is the masking character defined in Vocabulary Specification,
+    and [pads] is a string of repeated PAD_CHAR characters chosen so that the
+    entire string is of length self.block_size.
+  Intuitively, the [masked_content], a string, is removed from the document and
+    replaced with MASK_CHAR (the masking character defined in Vocabulary
+    Specification). After the suffix of the string, the MASK_CHAR is seen again,
+    followed by the content that was removed, and the padding characters.
+
+4. We now use masked_string to construct the input and output example pair. To
+do so, simply take the input string to be masked_string[:-1], and the output
+string to be masked_string[1:]. In other words, for each character, the goal is
+to predict the next character in the masked string.
+
+5. Making use of the vocabulary that you defined, encode the resulting input
+and output strings as Long tensors and return the resulting data point.'''
 
 """
 Code under here is strictly for your debugging purposes; feel free to modify
