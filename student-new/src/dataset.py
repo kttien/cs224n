@@ -178,78 +178,39 @@ sequence, and y encodes the output sequence.
 0. Use the idx argument of __getitem__ to retrieve the element of self.data
 at the given index. We'll call the resulting data entry a document.
 '''
-        # document = self.data[idx]
-
-        # min_length = 4
-        # max_length = int(self.block_size*7/8)
-        # length = random.randint(min_length, max_length)
-        # truncated_document = document[:length]
-
-        # min_length = 4
-        # max_length = int(self.block_size*7/8)
-        # truncated_length = random.randint(min_length, max_length)
-        # document = document[:truncated_length]
-
-        # masked_length = random.randint(1, int(0.5 * truncated_length))
-        # # randint is inclusive
-        # prefix_length = random.randint(1, truncated_length - masked_length - 1)
-        # suffix_length = truncated_length - masked_length - prefix_length
-        # prefix = truncated_document[:prefix_length]
-        # masked_content = truncated_document[prefix_length:prefix_length + masked_length]
-        # suffix = truncated_document[prefix_length + masked_length:]
-        # print(prefix_length, suffix_length, masked_length, truncated_length)
-        # assert prefix_length + suffix_length + masked_length == truncated_length
-        # masked_string = prefix + self.MASK_CHAR + suffix + self.MASK_CHAR + masked_content
-        # pads_length = self.block_size - len(masked_string)
-        # masked_string += self.PAD_CHAR * pads_length
-        # print(masked_string)
-
-        # input_string = masked_string[:-1]
-        # output_string = masked_string[1:]
-
-        # x = torch.tensor([self.stoi[c] for c in input_string], dtype=torch.long)
-        # y = torch.tensor([self.stoi[c] for c in output_string], dtype=torch.long)
-        # return x, y
-        # TODO [part e]: see spec above
         document = self.data[idx]
-        # 1. randomly truncate to [4, 7/8 * block_size]
-        doc_len = len(document)
-        truncate_len = random.randint(4, int(self.block_size * 7 / 8))
-        truncate_len = min(doc_len, truncate_len)
-        truncated_doc = document[:truncate_len]
-        # 2. break to [prefix] [masked_content] [suffix]
-        masked_len = random.randint(int(1 / 8 * truncate_len), int(3 / 8 * truncate_len))
-        assert truncate_len >= 4, (doc_len, truncate_len, masked_len, document, idx)
-        prefix_len = random.randint(1, truncate_len - masked_len - 1)
 
-        prefix = truncated_doc[:prefix_len]
-        masked_content = truncated_doc[prefix_len:prefix_len + masked_len]
-        suffix = truncated_doc[prefix_len + masked_len:]
+        min_length = 4
+        max_length = int(self.block_size*7/8)
+        length = random.randint(min_length, max_length)
+        truncated_document = document[:length]
 
-        # 3. rearrange to masked_string: [prefix] MASK_CHAR [suffix] MASK_CHAR [masked_content] [pads]
-        masked_string = prefix + self.MASK_CHAR + suffix + self.MASK_CHAR + masked_content + self.PAD_CHAR * (
-            self.block_size - truncate_len - 2)
+        min_length = 4
+        max_length = min(int(self.block_size*7/8), len(document))
+        truncated_length = random.randint(min_length, max_length)
+        document = document[:truncated_length]
+
+        masked_length = random.randint(1, int(0.5 * truncated_length))
+        # randint is inclusive
+        prefix_length = random.randint(1, truncated_length - masked_length - 1)
+        suffix_length = truncated_length - masked_length - prefix_length
+        prefix = truncated_document[:prefix_length]
+        masked_content = truncated_document[prefix_length:prefix_length + masked_length]
+        suffix = truncated_document[prefix_length + masked_length:]
+        print(prefix_length, suffix_length, masked_length, truncated_length)
+        assert prefix_length + suffix_length + masked_length == truncated_length
+        masked_string = prefix + self.MASK_CHAR + suffix + self.MASK_CHAR + masked_content
+        pads_length = self.block_size - len(masked_string)
+        masked_string += self.PAD_CHAR * pads_length
+        print(masked_string)
         assert len(masked_string) == self.block_size
 
-        # 4. input = masked_string[:-1], output = masked_string[1:]
-        x = masked_string[:-1]
-        y = masked_string[1:]
+        input_string = masked_string[:-1]
+        output_string = masked_string[1:]
 
-        # 5. encode to Long tensors
-        x = torch.LongTensor([self.stoi[c] for c in x])
-        y = torch.LongTensor([self.stoi[c] for c in y])
+        x = torch.tensor([self.stoi[c] for c in input_string], dtype=torch.long)
+        y = torch.tensor([self.stoi[c] for c in output_string], dtype=torch.long)
         return x, y
-
-        inp, oup = self.data[idx].split('\t')
-        x = inp + self.MASK_CHAR + oup + self.MASK_CHAR
-        x = x + self.PAD_CHAR * (self.block_size - len(x))
-        y = self.PAD_CHAR * (len(inp) - 1) + x[len(inp):]
-
-        x = x[:-1]
-        x = torch.tensor([self.stoi[c] for c in x], dtype=torch.long)
-        y = torch.tensor([self.stoi[c] for c in y], dtype=torch.long)
-        return x, y
-
 '''
 
 2. Now, break the (truncated) document into three substrings:
