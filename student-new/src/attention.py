@@ -99,12 +99,12 @@ class SynthesizerAttention(nn.Module):
         b = self.query(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         # v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
-        v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
-        b = self.w1(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
-        b = F.relu(b)
+        # v = self.value(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+        # b = self.w1(x).view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+        # b = F.relu(b)
 
         # synthesizer
-        att = b @ self.w2[:, :T] + self.b2[:T]  # (B, nh, T, hs) x (hs, T) + (T)-> (B, nh, T, T)
+        # att = b @ self.w2[:, :T] + self.b2[:T]  # (B, nh, T, hs) x (hs, T) + (T)-> (B, nh, T, T)
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         att = F.relu(b @ self.w2[:, :T] + self.b2[:T])
